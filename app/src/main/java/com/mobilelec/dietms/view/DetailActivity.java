@@ -2,6 +2,7 @@ package com.mobilelec.dietms.view;
 
 import android.content.Intent;
 import android.content.res.Resources;
+import android.graphics.Color;
 import android.os.AsyncTask;
 import android.os.Bundle;
 import android.widget.ImageView;
@@ -11,6 +12,13 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.text.HtmlCompat;
 import androidx.lifecycle.ViewModelProvider;
 
+import com.anychart.charts.Pie;
+import com.github.mikephil.charting.charts.PieChart;
+import com.github.mikephil.charting.components.Description;
+import com.github.mikephil.charting.data.PieData;
+import com.github.mikephil.charting.data.PieDataSet;
+import com.github.mikephil.charting.data.PieEntry;
+import com.github.mikephil.charting.utils.ColorTemplate;
 import com.mobilelec.dietms.R;
 import com.mobilelec.dietms.viewmodel.NetworkViewModel;
 import com.squareup.picasso.Picasso;
@@ -20,6 +28,11 @@ import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.io.IOException;
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.Locale;
 
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
@@ -42,7 +55,9 @@ public class DetailActivity extends AppCompatActivity {
     TextView nutr9;
     ImageView imgDetail;
     TextView info;
+    TextView info2;
 
+    PieChart pieChart;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -51,6 +66,39 @@ public class DetailActivity extends AppCompatActivity {
 
         initializeView();
 
+        pieChart = (PieChart)findViewById(R.id.piechart);
+
+        pieChart.setUsePercentValues(true);
+        pieChart.getDescription().setEnabled(false);
+        pieChart.setExtraOffsets(5,10,5,5);
+
+        pieChart.setDragDecelerationFrictionCoef(0.95f);
+
+        pieChart.setDrawHoleEnabled(false);
+        pieChart.setHoleColor(Color.WHITE);
+        pieChart.setTransparentCircleRadius(61f);
+
+        ArrayList<PieEntry> yValues = new ArrayList<PieEntry>();
+
+        yValues.add(new PieEntry(4f,"Today"));
+
+
+        Description description = new Description();
+        description.setText("총 2400Kcal"); //라벨
+        description.setTextSize(15);
+        pieChart.setDescription(description);
+
+
+        PieDataSet dataSet = new PieDataSet(yValues,"음식 종류");
+        dataSet.setSliceSpace(3f);
+        dataSet.setSelectionShift(5f);
+        dataSet.setColors(ColorTemplate.COLORFUL_COLORS);
+
+        PieData data = new PieData((dataSet));
+        data.setValueTextSize(10f);
+        data.setValueTextColor(Color.YELLOW);
+
+        pieChart.setData(data);
 
 
         networkViewModel = new ViewModelProvider(this, new ViewModelProvider.AndroidViewModelFactory(getApplication())).get(NetworkViewModel.class);
@@ -61,15 +109,18 @@ public class DetailActivity extends AppCompatActivity {
         text = text.replace(",","");
         String createdDate = intent.getStringExtra("created_date");
         //String publishedDate = intent.getStringExtra("published_date");
+        String formattedDate = formatDateString(createdDate);
+
         String image = intent.getStringExtra("image");
         //HtmlCompat.fromHtml("{createdDate}에 대한 식단을 알려줄게요");
-        //"<b>${response.userInfo.nickname}님</b>, 환영해요!<br>오늘은 이 글 어때요?", HtmlCompat.FROM_HTML_MODE_LEGACY
-        String Htmldate = "<p><strong>"+createdDate+"</strong> 의 식단</p>";
-        String Htmlfood = "<p><strong>"+text+"</strong> 에 대한 영양정보 입니다.</p>";
+        String Htmldate = "<p style=\"color:#495C9F;\"><strong>"+createdDate+"</strong> 의 식단</p>";
+        String Htmlfood = "<p style=\"color:#495C9F;\"><strong>"+text+"</strong> 에 대한 영양정보 입니다.</p>";
+
+
 
         dateDetail.setText(HtmlCompat.fromHtml(Htmldate,HtmlCompat.FROM_HTML_MODE_COMPACT));
         foodDetail.setText(HtmlCompat.fromHtml(Htmlfood,HtmlCompat.FROM_HTML_MODE_COMPACT));
-        Picasso.get().load(image).into(imgDetail);
+        Picasso.get().load(getResources().getString(R.string.BASE_URL)+image).into(imgDetail);
 
 
         new NetworkRequestTask(text).execute();
@@ -91,9 +142,12 @@ public class DetailActivity extends AppCompatActivity {
         nutr8 = findViewById(R.id.nutr8);
         nutr9 = findViewById(R.id.nutr9);
         info = findViewById(R.id.info);
+        info2 = findViewById(R.id.info2);
+
+
     }
 
-    private class NetworkRequestTask extends AsyncTask<Void, Void, String> {
+    class NetworkRequestTask extends AsyncTask<Void, Void, String> {
         Resources resources = getResources();
         private String text; // text 변수를 저장할 필드
 
@@ -146,6 +200,9 @@ public class DetailActivity extends AppCompatActivity {
                     try {
                         nutrCont1Float = Float.parseFloat(firstObject.getString("NUTR_CONT1"));
                         nutrCont6Float = Float.parseFloat(firstObject.getString("NUTR_CONT6"));
+
+                        updateChart(nutrCont6Float);
+
                     } catch (NumberFormatException e) {
                         nutrCont1Float = 0;
                         nutrCont6Float = 0;
@@ -154,8 +211,6 @@ public class DetailActivity extends AppCompatActivity {
                         nutrCont6Float = 0;
                     }
 
-                    float male = 2400 - nutrCont1Float;
-                    float female = 2000 - nutrCont1Float;
                     String and = "또한, \n";
                     String text1 = "사용자님의 식단은 "+firstObject.getString("NUTR_CONT1") + " kcal 이상입니다.\n";
                     String text2 = "나트륨 함량이 "+firstObject.getString("NUTR_CONT6") + " mg 이상입니다.\n";
@@ -178,10 +233,9 @@ public class DetailActivity extends AppCompatActivity {
 
                     info.setText(text1 +
                             text1Warnig +
-                            "남은 하루 필요 칼로리는 아래와 같습니다. \n" +
-                            "- 남성이신 경우 " + male + " kcal,\n" +
-                            "- 여성이신 경우 " + female + " kcal\n" +
-                            and + text2 + text2Warnig +
+                            and + text2);
+
+                    info2.setText(text2Warnig +
                             "이 점을 참고하여 건강한 식사하시길 바랍니다.\n" +
                             "아래에서 세부사항을 확인해주세요.\n");
 
@@ -204,6 +258,42 @@ public class DetailActivity extends AppCompatActivity {
                 // 오류 처리
             }
         }
+    }
+
+    private String formatDateString(String dateString) {
+        SimpleDateFormat inputFormat = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'", Locale.US);
+        SimpleDateFormat outputFormat = new SimpleDateFormat("yyyy년MM월dd일", Locale.US);
+
+        try {
+            Date date = inputFormat.parse(dateString);
+            return outputFormat.format(date);
+        } catch (ParseException e) {
+            e.printStackTrace();
+            return "";
+        }
+    }
+
+    private void updateChart(Float nutrCont6Float) {
+        ArrayList<PieEntry> yValues = new ArrayList<PieEntry>();
+        yValues.add(new PieEntry(nutrCont6Float,"Today"));
+        yValues.add(new PieEntry(2000-nutrCont6Float,"남은 나트륨"));
+
+        Description description = new Description();
+        description.setText("나트륨"); //라벨
+        description.setTextSize(15);
+        pieChart.setDescription(description);
+
+        PieDataSet dataSet = new PieDataSet(yValues,"");
+        dataSet.setSliceSpace(3f);
+        dataSet.setSelectionShift(5f);
+        dataSet.setColors(ColorTemplate.PASTEL_COLORS);
+
+        PieData data = new PieData((dataSet));
+        data.setValueTextSize(10f);
+        data.setValueTextColor(Color.YELLOW);
+
+        pieChart.setData(data);
+        pieChart.invalidate(); // 차트 업데이트
     }
 
 }

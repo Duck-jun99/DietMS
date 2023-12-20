@@ -8,19 +8,19 @@ import androidx.lifecycle.MutableLiveData;
 import com.google.gson.Gson;
 import com.google.gson.JsonSyntaxException;
 import com.google.gson.reflect.TypeToken;
-import com.mobilelec.dietms.R;
 import com.mobilelec.dietms.adapter.ItemList;
+
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 
 import okhttp3.Call;
 import okhttp3.Callback;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.Response;
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
 
-public class NetworkRepository {
+public class NetworkRepository2 {
     private final MutableLiveData<List<ItemList>> responseData = new MutableLiveData<>();
 
     public LiveData<List<ItemList>> getResponseData() {

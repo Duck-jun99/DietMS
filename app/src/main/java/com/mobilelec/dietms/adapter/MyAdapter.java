@@ -14,6 +14,7 @@ import com.mobilelec.dietms.R;
 import com.squareup.picasso.Picasso;
 
 import java.util.List;
+import java.util.Objects;
 
 public class MyAdapter extends RecyclerView.Adapter<MyAdapter.MyViewHolder> {
 
@@ -51,10 +52,21 @@ public class MyAdapter extends RecyclerView.Adapter<MyAdapter.MyViewHolder> {
         }
 
         public void bind(final ItemList user) {
-            tvTitle.setText(user.created_date);
+            if(Objects.equals(user.meal, "0")){
+                tvTitle.setText("아침");
+            }
+
+            if(Objects.equals(user.meal, "1")){
+                tvTitle.setText("점심");
+            }
+
+            if(Objects.equals(user.meal, "2")){
+                tvTitle.setText("저녁");
+            }
+
             tvText.setText("음식: "+user.text);
             //tvAge.setText(Integer.toString(user.age));
-            Picasso.get().load(user.image).into(img);
+            Picasso.get().load(itemView.getContext().getString(R.string.BASE_URL)+user.image).into(img);
 
             itemView.setOnClickListener(new View.OnClickListener() {
                 @Override
